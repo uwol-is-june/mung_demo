@@ -157,8 +157,14 @@
       background: none; border: none; font-size: 19px;
       cursor: pointer; color: #4CAF50; padding: 2px 4px;
     }
-    .panel-title { font-size: 15px; font-weight: 700; color: #333; }
+    .panel-title { font-size: 15px; font-weight: 700; color: #333; flex: 1; }
     .panel-content { flex: 1; overflow-y: auto; }
+    .header-add-btn {
+      background: none; border: 1.5px solid #4CAF50; border-radius: 10px;
+      color: #4CAF50; font-size: 12px; font-weight: 700;
+      padding: 4px 10px; cursor: pointer; flex-shrink: 0;
+    }
+    .header-add-btn:active { background: #f0fdf4; }
 
     /* ── C MODE: FULL SCREEN ─────────────────────────────── */
     .friend-screen {
@@ -283,6 +289,20 @@
     .sent-cheer-sub { font-size: 10px; color: #999; }
     .heart-back { font-size: 16px; }
     .heart-waiting { font-size: 13px; color: #ccc; letter-spacing: 2px; }
+    .clean-badge { font-size: 15px; flex-shrink: 0; }
+    .praise-btn {
+      font-size: 11px; font-weight: 700; color: #fff;
+      background: #4CAF50; border: none; border-radius: 8px;
+      padding: 5px 10px; cursor: pointer; flex-shrink: 0;
+    }
+    .praise-btn:active { background: #43a047; }
+    .nudge-btn {
+      font-size: 11px; font-weight: 600; color: #999;
+      background: none; border: 1.5px solid #ddd; border-radius: 8px;
+      padding: 5px 10px; cursor: pointer; flex-shrink: 0;
+    }
+    .nudge-btn:active { background: #f5f5f5; }
+    .nudge-sent { font-size: 10px; color: #bbb; font-weight: 600; flex-shrink: 0; }
     .my-cheer-dismiss {
       font-size: 11px; font-weight: 600; color: #aaa;
       background: none; border: 1px solid #e0e0e0;
@@ -428,6 +448,7 @@
     <div class="panel-header">
       <button class="panel-back" onclick="closeFriendPanel()">←</button>
       <span class="panel-title">친구</span>
+      <button class="header-add-btn" onclick="openAddFriend()">+ 추가</button>
     </div>
     <div class="panel-content" id="panel-content"></div>
   </div>
@@ -441,6 +462,7 @@
     <div class="fs-navbar">
       <button class="fs-back" onclick="closeFriendScreen()">‹</button>
       <span class="fs-title">친구</span>
+      <button class="header-add-btn" onclick="openAddFriend()" style="margin-left:auto">+ 추가</button>
     </div>
     <div class="fs-content" id="fs-content"></div>
   </div>
@@ -460,9 +482,10 @@ const ME = { code: 'MUNG-4829', name: '논술이 비송', level: 14 };
 let dogName = '뭉뭉이';
 
 let friends = [
-  { name: '김뭉뭉', dog: '쿠키',   level: 8,  emoji: '🐶', drinkAlert: 'today',     cheered: true, heartedBack: true },
+  { name: '김뭉뭉', dog: '쿠키',   level: 8,  emoji: '🐶', drinkAlert: 'today' },
   { name: '박쫑쫑', dog: '두부',   level: 12, emoji: '🐩', drinkAlert: 'yesterday', cheered: true, heartedBack: false },
-  { name: '최짱짱', dog: '몽글이', level: 20, emoji: '🐕' },
+  { name: '최짱짱', dog: '몽글이', level: 20, emoji: '🐕', drinkRecord: 'clean' },
+  { name: '이왈왈', dog: '콩이',   level: 5,  emoji: '🐕‍🦺' },
 ];
 
 let pendingIn = [
@@ -554,54 +577,48 @@ function renderFriendList(cid) {
     });
   }
 
-  const sentCheers = friends.map((f,i) => ({...f, idx: i})).filter(f => f.cheered);
-  if (sentCheers.length) {
-    h += '<div class="section-label">🐾 보낸 응원 (' + sentCheers.length + ')</div>';
-    sentCheers.forEach(f => {
-      h += '<div class="sent-cheer-item">'
-         + '  <div class="friend-avatar">' + f.emoji + '</div>'
-         + '  <div class="sent-cheer-info">'
-         + '    <div class="sent-cheer-name">' + f.name + '</div>'
-         + '    <div class="sent-cheer-sub">' + f.dog + '이에게 응원을 보냈어요</div>'
-         + '  </div>'
-         + '  <span class="' + (f.heartedBack ? 'heart-back' : 'heart-waiting') + '">' + (f.heartedBack ? '❤️' : '···') + '</span>'
-         + '</div>';
-    });
-  }
-
-  const drinkFriends = friends.map((f,i) => ({...f, idx: i})).filter(f => f.drinkAlert);
-  if (drinkFriends.length) {
-    h += '<div class="section-label">🍺 응원 요청 (' + drinkFriends.length + ')</div>';
-    drinkFriends.forEach(f => {
-      h += '<div class="cheer-item">'
-         + '  <div class="friend-avatar">' + f.emoji + '</div>'
-         + '  <div class="cheer-info">'
-         + '    <div class="cheer-name">' + f.name + '</div>'
-         + '    <div class="cheer-sub">' + f.dog + '이가 ' + (f.drinkAlert === 'yesterday' ? '어제' : '오늘') + ' 한 잔 했대요</div>'
-         + '  </div>'
-         + (f.cheered
-             ? '<span class="cheered-badge">응원완료 ✅</span>'
-             : '<button class="cheer-btn" onclick="openCheer(\'' + cid + '\',' + f.idx + ')">응원하기</button>')
-         + '</div>';
-    });
-  }
-
-  h += '<div class="section-label">내 친구 ' + friends.length + '명</div>';
+  h += '<div class="section-label">친구 ' + friends.length + '명</div>';
   if (!friends.length) {
     h += '<div style="padding:20px;text-align:center;color:#ccc;font-size:12px;">아직 친구가 없어요<br>코드로 추가해봐요!</div>';
   } else {
-    friends.forEach(f => {
-      h += '<div class="friend-item">'
-         + '  <div class="friend-avatar">' + f.emoji + '</div>'
-         + '  <div class="friend-info">'
-         + '    <div class="friend-name">' + f.name + '</div>'
-         + '    <div class="friend-detail">' + f.dog + '이 · LV.' + f.level + '</div>'
-         + '  </div>'
-         + '</div>';
+    friends.forEach((f, i) => {
+      if (f.drinkAlert) {
+        h += '<div class="cheer-item">'
+           + '  <div class="friend-avatar">' + f.emoji + '</div>'
+           + '  <div class="cheer-info">'
+           + '    <div class="cheer-name">' + f.name + '</div>'
+           + '    <div class="cheer-sub">' + f.dog + '이가 ' + (f.drinkAlert === 'yesterday' ? '어제' : '오늘') + ' 한 잔 했대요</div>'
+           + '  </div>'
+           + (f.cheered
+               ? '<span class="' + (f.heartedBack ? 'heart-back' : 'heart-waiting') + '">' + (f.heartedBack ? '❤️' : '···') + '</span>'
+               : '<button class="cheer-btn" onclick="openCheer(\'' + cid + '\',' + i + ')">응원하기</button>')
+           + '</div>';
+      } else if (f.drinkRecord === 'clean') {
+        h += '<div class="friend-item">'
+           + '  <div class="friend-avatar">' + f.emoji + '</div>'
+           + '  <div class="friend-info">'
+           + '    <div class="friend-name">' + f.name + '</div>'
+           + '    <div class="friend-detail">' + f.dog + '이 · 오늘 술 안 마셨어요 🌿</div>'
+           + '  </div>'
+           + (f.cheered
+               ? '<span class="' + (f.heartedBack ? 'heart-back' : 'heart-waiting') + '">' + (f.heartedBack ? '❤️' : '···') + '</span>'
+               : '<button class="praise-btn" onclick="openCheer(\'' + cid + '\',' + i + ',\'clean\')">칭찬하기</button>')
+           + '</div>';
+      } else {
+        h += '<div class="friend-item">'
+           + '  <div class="friend-avatar">' + f.emoji + '</div>'
+           + '  <div class="friend-info">'
+           + '    <div class="friend-name">' + f.name + '</div>'
+           + '    <div class="friend-detail">' + f.dog + '이 · LV.' + f.level + '</div>'
+           + '  </div>'
+           + (f.nudged
+               ? '<span class="nudge-sent">알림 보냄 ✓</span>'
+               : '<button class="nudge-btn" onclick="sendNudge(\'' + cid + '\',' + i + ')">콕 찌르기</button>')
+           + '</div>';
+      }
     });
   }
 
-  h += '<button class="add-friend-btn" onclick="openAddFriend()">+ 친구 추가</button>';
   document.getElementById(cid).innerHTML = h;
 }
 
@@ -690,7 +707,7 @@ const NAME_SETS = [
   ["구름이","눈송이","흰둥이"], ["보리","땅콩","쿠키"],
 ];
 let nameIdx = 0;
-let _cheerTarget = -1, _cheerCid = '', _cheerMsg = '';
+let _cheerTarget = -1, _cheerCid = '', _cheerMsg = '', _cheerType = 'drink';
 
 function buildModal(type, extra) {
   const chips = NAME_SETS[nameIdx % NAME_SETS.length]
@@ -704,10 +721,16 @@ function buildModal(type, extra) {
     case 'drink-done': return '<div class="modal-pad"><div class="modal-icon">' + (extra?'🍻':'✨') + '</div><div class="modal-title">' + (extra?'기록 완료!':'잘했어!') + '</div><div class="modal-text">' + (extra?'오늘 한 잔 했구나!<br>기록해뒀어. 많이 마시진 마 🐾<br><br>친구들에게 알림이 갔어요 💌':'오늘 절주 성공!<br>대단해, 칭찬해줄게 🎉') + '</div><button class="m-btn" onclick="closeModal()">고마워!</button></div>';
     case 'cheer': {
       const f = friends[extra];
-      const dayText = f.drinkAlert === 'yesterday' ? '어제' : '오늘';
-      const msgs = ['오늘만! 내일부턴 절주해 💪','같이 힘내자 🐾','괜찮아~ 한 번은 실수야 ☺️','물 많이 마셔! 속 안 아프게 🥤'];
+      const isDrink = _cheerType === 'drink';
+      const msgs = isDrink
+        ? ['오늘만! 내일부턴 절주해 💪','같이 힘내자 🐾','괜찮아~ 한 번은 실수야 ☺️','물 많이 마셔! 속 안 아프게 🥤']
+        : ['오늘 술 안 마신 거 대단해 🌿','역시 최고야 👏','연속 도전 응원해 💪','멋있다 진짜 🎉'];
+      const title = isDrink ? f.name + '에게 응원 보내기' : f.name + '에게 칭찬 보내기';
+      const desc = isDrink
+        ? f.dog + '이가 ' + (f.drinkAlert === 'yesterday' ? '어제' : '오늘') + ' 한 잔 했대요<br>응원의 한마디를 골라봐요!'
+        : f.dog + '이가 오늘 술 안 마셨대요<br>칭찬 한마디를 골라봐요!';
       const chips = msgs.map(m => '<button class="cheer-chip" data-msg="' + m + '" onclick="selectCheer(this)">' + m + '</button>').join('');
-      return '<div class="modal-pad"><div class="modal-icon">💌</div><div class="modal-title">' + f.name + '에게 응원 보내기</div><div class="modal-text">' + f.dog + '이가 ' + dayText + ' 한 잔 했대요<br>응원의 한마디를 골라봐요!</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">' + chips + '</div><input class="m-input" id="cheer-custom" placeholder="직접 입력..." maxlength="40" oninput="typeCheer(this)"><div class="btn-row"><button class="m-btn sm ghost" onclick="closeModal()">취소</button><button class="m-btn sm" id="cheer-send-btn" disabled onclick="sendCheer()">응원 보내기</button></div></div>';
+      return '<div class="modal-pad"><div class="modal-icon">💌</div><div class="modal-title">' + title + '</div><div class="modal-text">' + desc + '</div><div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">' + chips + '</div><input class="m-input" id="cheer-custom" placeholder="직접 입력..." maxlength="40" oninput="typeCheer(this)"><div class="btn-row"><button class="m-btn sm ghost" onclick="closeModal()">취소</button><button class="m-btn sm" id="cheer-send-btn" disabled onclick="sendCheer()">보내기</button></div></div>';
     }
     case 'cheer-done': return '<div class="modal-pad"><div class="modal-icon">🎉</div><div class="modal-title">응원을 보냈어요!</div><div class="modal-text">' + extra + '이 힘을 얻었을 거예요 🐾</div><button class="m-btn" onclick="closeCheerDone()">닫기</button></div>';
     case 'edit-dogname': return '<div class="modal-pad"><div class="modal-icon">🐾</div><div class="modal-title">강아지 이름 변경</div><input class="m-input" id="edit-input" value="' + dogName + '" maxlength="10" onkeydown="if(event.key===\'Enter\')saveDogName()"><div class="btn-row"><button class="m-btn sm ghost" onclick="closeModal()">취소</button><button class="m-btn sm" onclick="saveDogName()">저장</button></div></div>';
@@ -760,9 +783,13 @@ function saveMyName() {
   if (v) { ME.name = v; closeModal(); renderSettingScreen(); }
 }
 
-function openCheer(cid, i) {
-  _cheerTarget = i; _cheerCid = cid; _cheerMsg = '';
+function openCheer(cid, i, type) {
+  _cheerTarget = i; _cheerCid = cid; _cheerMsg = ''; _cheerType = type || 'drink';
   openModal('cheer', i);
+}
+function sendNudge(cid, i) {
+  friends[i].nudged = true;
+  renderFriendList(cid);
 }
 function selectCheer(el) {
   document.querySelectorAll('.cheer-chip').forEach(c => c.classList.remove('selected'));
